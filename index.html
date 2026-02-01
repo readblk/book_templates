@@ -288,21 +288,19 @@
 
     <script>
         // Database of book bingo prompts - BLACK HISTORY MONTH EDITION
-        // FREE SPACE is always at index 12 (center)
-        const bingoPrompts = [
+        const allPrompts = [
             "Book by Maya Angelou",
             "Read a memoir",
             "Historical fiction set during Civil Rights era",
             "Book by James Baldwin",
             "Poetry collection",
             "Book about Black innovation",
-            "Book by a Queer author",
+            "Book by Queer author",
             "Book by Toni Morrison",
             "Biography of a Black leader",
             "Book celebrating Black joy",
             "Graphic novel or comic",
             "Book by Octavia Butler",
-            "FREE SPACE",
             "Book published this month",
             "Book about the Great Migration",
             "Sci-fi or fantasy",
@@ -317,7 +315,46 @@
             "Book recommended by a friend"
         ];
 
+        let bingoPrompts = [];
         let completedCells = new Set();
+
+        // Generate cryptographically random number for better shuffling
+        function getSecureRandom() {
+            const array = new Uint32Array(1);
+            crypto.getRandomValues(array);
+            return array[0] / (0xFFFFFFFF + 1);
+        }
+
+        // Shuffle array using Fisher-Yates algorithm with crypto random
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(getSecureRandom() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // Generate randomized bingo card with FREE SPACE always in center (index 12)
+        function generateBingoCard() {
+            const shuffled = shuffleArray(allPrompts);
+            const card = [];
+            
+            // Add first 12 shuffled prompts
+            for (let i = 0; i < 12; i++) {
+                card.push(shuffled[i]);
+            }
+            
+            // Add FREE SPACE at index 12 (center position)
+            card.push("FREE SPACE");
+            
+            // Add remaining 12 shuffled prompts
+            for (let i = 12; i < 24; i++) {
+                card.push(shuffled[i]);
+            }
+            
+            return card;
+        }
 
         // Initialize the bingo grid
         function initializeBingo() {
@@ -363,10 +400,16 @@
             }
         }
 
-        // Reset the bingo card
+        // Reset the bingo card with NEW randomization
         function resetBingo() {
             completedCells.clear();
             localStorage.removeItem('bookBingoState');
+            localStorage.removeItem('bookBingoCard');
+            
+            // Generate a NEW random card
+            bingoPrompts = generateBingoCard();
+            saveCardState();
+            
             initializeBingo();
             document.getElementById('completionModal').classList.remove('show');
         }
@@ -376,11 +419,28 @@
             localStorage.setItem('bookBingoState', JSON.stringify([...completedCells]));
         }
 
+        // Save the current card layout with a unique identifier
+        function saveCardState() {
+            localStorage.setItem('bookBingoCard', JSON.stringify(bingoPrompts));
+            // Store generation timestamp for debugging
+            localStorage.setItem('bookBingoCardGenerated', new Date().toISOString());
+        }
+
         // Load state from localStorage
         function loadState() {
             const saved = localStorage.getItem('bookBingoState');
             if (saved) {
                 completedCells = new Set(JSON.parse(saved));
+            }
+            
+            const savedCard = localStorage.getItem('bookBingoCard');
+            if (savedCard) {
+                bingoPrompts = JSON.parse(savedCard);
+            } else {
+                // First time visitor - generate random card
+                bingoPrompts = generateBingoCard();
+                saveCardState();
+                console.log('Generated new random bingo card');
             }
         }
 
